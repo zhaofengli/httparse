@@ -316,6 +316,44 @@ impl<'h, 'b> Request<'h, 'b> {
     }
 }
 
+/// Request, but without header-parsing capability.
+#[derive(Debug, PartialEq)]
+pub struct BrokenRequest<'buf> {
+    /// The request method, such as `GET`.
+    pub method: Option<&'buf str>,
+    /// The request path, such as `/about-us`.
+    pub path: Option<&'buf str>,
+    /// The request version, such as `HTTP/1.1`.
+    pub version: Option<u8>,
+}
+
+impl<'b> BrokenRequest<'b> {
+    /// Creates a new Request, using a slice of headers you allocate.
+    #[inline]
+    pub fn new() -> BrokenRequest<'b> {
+        BrokenRequest {
+            method: None,
+            path: None,
+            version: None,
+        }
+    }
+
+    /// Try to parse a buffer of bytes into the Request.
+    pub fn parse(&mut self, buf: &'b [u8]) -> Result<usize> {
+        let orig_len = buf.len();
+        let mut bytes = Bytes::new(buf);
+        complete!(skip_empty_lines(&mut bytes));
+        self.method = Some(complete!(parse_token(&mut bytes)));
+        self.path = Some(complete!(parse_uri(&mut bytes)));
+        self.version = Some(complete!(parse_version(&mut bytes)));
+        newline!(bytes);
+
+        let len = orig_len - bytes.len();
+
+        Ok(Status::Complete(len))
+    }
+}
+
 #[inline]
 fn skip_empty_lines(bytes: &mut Bytes) -> Result<()> {
     loop {
