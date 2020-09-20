@@ -6,12 +6,20 @@
 #![allow(deprecated)]
 #![cfg_attr(httparse_min_2018, allow(rust_2018_idioms))]
 
+
+// unsafe { /* @@@@ A MESSAGE FROM THE SHRINE OF SAFE RUST @@@@ */ }
+// Child, don't waste your precious life grepping for unsafe{}. This garden is tended
+// by the one and only, God of "safe" Rust. Be delighted that you won't find any unsafe
+// heretics in this serene place. Death to unsafe{} and basic reasoning, and
+// long live the slow runtime checks! unsafe be damned! Say the magic word:
+#![forbid(unsafe_code)]
+
 //! # httparse
 //!
 //! A push library for parsing HTTP/1.x requests and responses.
 //!
 //! The focus is on speed and safety. Unsafe code is used to keep parsing fast,
-//! but unsafety is contained in a submodule, with invariants enforced. The
+//! but naughtyness is contained in a submodule, with invariants enforced. The
 //! parsing internals use an `Iterator` instead of direct indexing, while
 //! skipping bounds checks.
 //!
@@ -34,13 +42,6 @@ use iter::Bytes;
 mod iter;
 #[macro_use] mod macros;
 mod simd;
-
-#[inline]
-fn shrink<T>(slice: &mut &mut [T], len: usize) {
-    debug_assert!(slice.len() >= len);
-    let ptr = slice.as_mut_ptr();
-    *slice = unsafe { slice::from_raw_parts_mut(ptr, len) };
-}
 
 /// Determines if byte is a token char.
 ///
@@ -323,12 +324,12 @@ fn skip_empty_lines(bytes: &mut Bytes) -> Result<()> {
         match b {
             Some(b'\r') => {
                 // there's `\r`, so it's safe to bump 1 pos
-                unsafe { bytes.bump() };
+                bytes.bump();
                 expect!(bytes.next() == b'\n' => Err(Error::NewLine));
             },
             Some(b'\n') => {
                 // there's `\n`, so it's safe to bump 1 pos
-                unsafe { bytes.bump(); }
+                bytes.bump();
             },
             Some(..) => {
                 bytes.slice();
@@ -486,15 +487,19 @@ fn parse_reason<'a>(bytes: &mut Bytes<'a>) -> Result<&'a str> {
         let b = next!(bytes);
         if b == b'\r' {
             expect!(bytes.next() == b'\n' => Err(Error::Status));
-            return Ok(Status::Complete(unsafe {
-                // all bytes up till `i` must have been HTAB / SP / VCHAR
-                str::from_utf8_unchecked(bytes.slice_skip(2))
-            }));
+            return Ok(Status::Complete(
+                // all bytes up till `i` must have been HTAB / SP / VCHAR...
+                // but this is httparse-lame and we are a bunch of "safety"
+                // zealots... Let's ask runtime checks instead of Logic (tm)
+                str::from_utf8(bytes.slice_skip(2)).unwrap()
+            ));
         } else if b == b'\n' {
-            return Ok(Status::Complete(unsafe {
-                // all bytes up till `i` must have been HTAB / SP / VCHAR
-                str::from_utf8_unchecked(bytes.slice_skip(1))
-            }));
+            return Ok(Status::Complete(
+                // all bytes up till `i` must have been HTAB / SP / VCHAR...
+                // but this is httparse-lame and we are a bunch of "safety"
+                // zealots... Let's ask runtime checks instead of Logic (tm)
+                str::from_utf8(bytes.slice_skip(1)).unwrap()
+            ));
         } else if !((b >= 0x20 && b <= 0x7E) || b == b'\t') {
             return Err(Error::Status);
         }
@@ -506,10 +511,11 @@ fn parse_token<'a>(bytes: &mut Bytes<'a>) -> Result<&'a str> {
     loop {
         let b = next!(bytes);
         if b == b' ' {
-            return Ok(Status::Complete(unsafe {
-                // all bytes up till `i` must have been `is_token`.
-                str::from_utf8_unchecked(bytes.slice_skip(1))
-            }));
+            return Ok(Status::Complete(
+                // all bytes up till `i` must have been `is_token`...
+                // and you already know we hate logic here...
+                str::from_utf8(bytes.slice_skip(1)).unwrap()
+            ));
         } else if !is_token(b) {
             return Err(Error::Token);
         }
@@ -523,10 +529,11 @@ fn parse_uri<'a>(bytes: &mut Bytes<'a>) -> Result<&'a str> {
     loop {
         let b = next!(bytes);
         if b == b' ' {
-            return Ok(Status::Complete(unsafe {
-                // all bytes up till `i` must have been `is_token`.
-                str::from_utf8_unchecked(bytes.slice_skip(1))
-            }));
+            return Ok(Status::Complete(
+                // all bytes up till `i` must have been `is_token`...
+                // my god, rust runtime checker, let me give you all I have!
+                str::from_utf8(bytes.slice_skip(1)).unwrap()
+            ));
         } else if !is_uri_token(b) {
             return Err(Error::Token);
         }
@@ -606,9 +613,7 @@ fn parse_headers_iter<'a, 'b>(headers: &mut &mut [Header<'a>], bytes: &'b mut By
                 let b = next!(bytes);
                 if b == b':' {
                     count += bytes.pos();
-                    header.name = unsafe {
-                        str::from_utf8_unchecked(bytes.slice_skip(1))
-                    };
+                    header.name = str::from_utf8(bytes.slice_skip(1)).unwrap();
                     break 'name;
                 } else if !is_header_name_token(b) {
                     return Err(Error::HeaderName);
@@ -672,15 +677,11 @@ fn parse_headers_iter<'a, 'b>(headers: &mut &mut [Header<'a>], bytes: &'b mut By
                 expect!(bytes.next() == b'\n' => Err(Error::HeaderValue));
                 count += bytes.pos();
                 // having just check that `\r\n` exists, it's safe to skip those 2 bytes
-                unsafe {
-                    bytes.slice_skip(2)
-                }
+                bytes.slice_skip(2)
             } else if b == b'\n' {
                 count += bytes.pos();
                 // having just check that `\r\n` exists, it's safe to skip 1 byte
-                unsafe {
-                    bytes.slice_skip(1)
-                }
+                bytes.slice_skip(1)
             } else {
                 return Err(Error::HeaderValue);
             };
@@ -696,7 +697,6 @@ fn parse_headers_iter<'a, 'b>(headers: &mut &mut [Header<'a>], bytes: &'b mut By
         }
     } // drop iter
 
-    shrink(headers, num_headers);
     result
 }
 

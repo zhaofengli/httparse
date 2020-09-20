@@ -1,8 +1,6 @@
-# httparse
+# httparse-lame
 
-[![Build Status](https://travis-ci.org/seanmonstar/httparse.svg?branch=master)](https://travis-ci.org/seanmonstar/httparse)
-[![Coverage Status](https://coveralls.io/repos/seanmonstar/httparse/badge.svg)](https://coveralls.io/r/seanmonstar/httparse)
-[![crates.io](https://img.shields.io/crates/v/httparse.svg)](https://crates.io/crates/httparse)
+**Please use the original version of httparse instead.**
 
 A push parser for the HTTP 1.x protocol. Avoids allocations. No copy. **Fast.**
 

@@ -22,46 +22,6 @@ Keep-Alive: 115\r\n\
 Connection: keep-alive\r\n\
 Cookie: wp_ozh_wsa_visits=2; wp_ozh_wsa_visit_lasttime=xxxxxxxxxx; __utma=xxxxxxxxx.xxxxxxxxxx.xxxxxxxxxx.xxxxxxxxxx.xxxxxxxxxx.x; __utmz=xxxxxxxxx.xxxxxxxxxx.x.x.utmccn=(referral)|utmcsr=reader.livedoor.com|utmcct=/reader/|utmcmd=referral|padding=under256\r\n\r\n";
 
-
-#[bench]
-fn bench_pico(b: &mut test::Bencher) {
-    use std::mem;
-
-    #[repr(C)]
-    #[derive(Clone, Copy)]
-    struct Header<'a>(&'a [u8], &'a [u8]);
-
-
-    #[repr(C)]
-    struct Headers<'a>(&'a mut [Header<'a>]);
-    let method = [0i8; 16];
-    let path = [0i8; 16];
-    let mut minor_version = 0;
-    let mut h = [Header(&[], &[]); 16];
-    let mut h_len = h.len();
-    let headers = Headers(&mut h);
-    let prev_buf_len = 0;
-
-    b.iter(|| {
-        let ret = unsafe {
-            pico::ffi::phr_parse_request(
-                REQ.as_ptr() as *const _,
-                REQ.len(),
-                &mut method.as_ptr(),
-                &mut 16,
-                &mut path.as_ptr(),
-                &mut 16,
-                &mut minor_version,
-                mem::transmute::<*mut Header, *mut pico::ffi::phr_header>(headers.0.as_mut_ptr()),
-                &mut h_len as *mut usize as *mut _,
-                prev_buf_len
-            )
-        };
-        assert_eq!(ret, REQ.len() as i32);
-    });
-    b.bytes = REQ.len() as u64;
-}
-
 #[bench]
 fn bench_httparse(b: &mut test::Bencher) {
     let mut headers = [httparse::Header{ name: "", value: &[] }; 16];
@@ -70,45 +30,6 @@ fn bench_httparse(b: &mut test::Bencher) {
         assert_eq!(req.parse(REQ).unwrap(), httparse::Status::Complete(REQ.len()));
     });
     b.bytes = REQ.len() as u64;
-}
-
-#[bench]
-fn bench_pico_short(b: &mut test::Bencher) {
-    use std::mem;
-
-    #[repr(C)]
-    #[derive(Clone, Copy)]
-    struct Header<'a>(&'a [u8], &'a [u8]);
-
-
-    #[repr(C)]
-    struct Headers<'a>(&'a mut [Header<'a>]);
-    let method = [0i8; 16];
-    let path = [0i8; 16];
-    let mut minor_version = 0;
-    let mut h = [Header(&[], &[]); 16];
-    let mut h_len = h.len();
-    let headers = Headers(&mut h);
-    let prev_buf_len = 0;
-
-    b.iter(|| {
-        let ret = unsafe {
-            pico::ffi::phr_parse_request(
-                REQ_SHORT.as_ptr() as *const _,
-                REQ_SHORT.len(),
-                &mut method.as_ptr(),
-                &mut 16,
-                &mut path.as_ptr(),
-                &mut 16,
-                &mut minor_version,
-                mem::transmute::<*mut Header, *mut pico::ffi::phr_header>(headers.0.as_mut_ptr()),
-                &mut h_len as *mut usize as *mut _,
-                prev_buf_len
-            )
-        };
-        assert_eq!(ret, REQ_SHORT.len() as i32);
-    });
-    b.bytes = REQ_SHORT.len() as u64;
 }
 
 #[bench]

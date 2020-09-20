@@ -64,7 +64,7 @@ fn enable_simd(version: Version) {
     }
 
     // cfg(target_feature) isn't stable yet, but CARGO_CFG_TARGET_FEATURE has
-    // a list... We aren't doing anything unsafe, since the is_x86_feature_detected
+    // a list... We aren't doing anything naughty, since the is_x86_feature_detected
     // macro still checks in the actual lib, BUT!
     //
     // By peeking at the list here, we can change up slightly how we do feature
