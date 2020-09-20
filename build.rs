@@ -39,6 +39,9 @@ fn enable_new_features(raw_version: &str) {
 }
 
 fn enable_simd(version: Version) {
+    // HACK: Always disable SIMD
+    return;
+
     if env::var_os("CARGO_FEATURE_STD").is_none() {
         println!("cargo:warning=building for no_std disables httparse SIMD");
         return;
